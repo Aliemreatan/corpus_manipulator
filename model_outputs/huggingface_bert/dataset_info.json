@@ -1,0 +1,30 @@
+{
+  "description": "Turkish POS tagging dataset for BERT fine-tuning",
+  "citation": "Generated from Cleaned-for-tags.csv",
+  "license": "Custom",
+  "features": {
+    "input_ids": {
+      "dtype": "int32",
+      "shape": [
+        128
+      ]
+    },
+    "attention_mask": {
+      "dtype": "int32",
+      "shape": [
+        128
+      ]
+    },
+    "labels": {
+      "dtype": "int32",
+      "shape": [
+        128
+      ]
+    }
+  },
+  "splits": {
+    "train": 2775,
+    "validation": 397,
+    "test": 794
+  }
+}

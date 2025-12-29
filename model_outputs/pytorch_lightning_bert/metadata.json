@@ -1,0 +1,12 @@
+{
+  "model_name": "dbmdz/bert-base-turkish-128k-cased",
+  "max_seq_length": 128,
+  "vocab_size": 128000,
+  "num_labels": 0,
+  "label_to_id": {},
+  "id_to_label": {},
+  "total_sequences": 3966,
+  "alignment_issues": 0,
+  "total_tokens": 16477,
+  "total_subwords": 18985
+}
