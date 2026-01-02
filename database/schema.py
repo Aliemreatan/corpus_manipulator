@@ -136,9 +136,14 @@ class CorpusDatabase:
     def _create_triggers(self, cursor):
         """Create triggers to maintain FTS index"""
         
+        # Drop existing triggers to ensure updates are applied
+        cursor.execute("DROP TRIGGER IF EXISTS tokens_ai")
+        cursor.execute("DROP TRIGGER IF EXISTS tokens_au")
+        cursor.execute("DROP TRIGGER IF EXISTS tokens_ad")
+        
         # Trigger for INSERT
         cursor.execute("""
-            CREATE TRIGGER IF NOT EXISTS tokens_ai AFTER INSERT ON tokens BEGIN
+            CREATE TRIGGER tokens_ai AFTER INSERT ON tokens BEGIN
                 INSERT INTO tokens_fts(rowid, form, norm, lemma) 
                 VALUES (new.token_id, new.form, new.norm, new.lemma);
             END
@@ -146,9 +151,9 @@ class CorpusDatabase:
         
         # Trigger for UPDATE
         cursor.execute("""
-            CREATE TRIGGER IF NOT EXISTS tokens_au AFTER UPDATE ON tokens BEGIN
+            CREATE TRIGGER tokens_au AFTER UPDATE ON tokens BEGIN
                 INSERT INTO tokens_fts(tokens_fts, rowid, form, norm, lemma) 
-                VALUES('delete', old.token_id);
+                VALUES('delete', old.token_id, old.form, old.norm, old.lemma);
                 INSERT INTO tokens_fts(rowid, form, norm, lemma) 
                 VALUES (new.token_id, new.form, new.norm, new.lemma);
             END
@@ -156,9 +161,9 @@ class CorpusDatabase:
         
         # Trigger for DELETE
         cursor.execute("""
-            CREATE TRIGGER IF NOT EXISTS tokens_ad AFTER DELETE ON tokens BEGIN
+            CREATE TRIGGER tokens_ad AFTER DELETE ON tokens BEGIN
                 INSERT INTO tokens_fts(tokens_fts, rowid, form, norm, lemma) 
-                VALUES('delete', old.token_id);
+                VALUES('delete', old.token_id, old.form, old.norm, old.lemma);
             END
         """)
         

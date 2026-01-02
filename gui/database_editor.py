@@ -185,20 +185,48 @@ class DatabaseEditor:
         """Dialog window for editing token fields"""
         dialog = tk.Toplevel(self.root)
         dialog.title(f"Token Düzenle: {token_id}")
-        dialog.geometry("400x300")
+        dialog.geometry("400x350")
+        
+        # Universal POS Tags
+        upos_tags = [
+            "ADJ", "ADP", "ADV", "AUX", "CCONJ", "DET", "INTJ", "NOUN", 
+            "NUM", "PART", "PRON", "PROPN", "PUNCT", "SCONJ", "SYM", "VERB", "X"
+        ]
         
         # Fields
-        fields = ["Form", "Lemma", "UPOS", "XPOS"]
         entries = {}
         
-        for i, field in enumerate(fields):
-            ttk.Label(dialog, text=field).grid(row=i, column=0, padx=10, pady=10)
-            entry = ttk.Entry(dialog)
-            # Index + 1 because first value is ID
-            val = current_values[i+1]
-            entry.insert(0, str(val) if val != 'None' else "")
-            entry.grid(row=i, column=1, padx=10, pady=10, sticky="ew")
-            entries[field.lower()] = entry
+        # Form
+        ttk.Label(dialog, text="Form").grid(row=0, column=0, padx=10, pady=5)
+        ent_form = ttk.Entry(dialog)
+        ent_form.insert(0, str(current_values[1]) if current_values[1] != 'None' else "")
+        ent_form.grid(row=0, column=1, padx=10, pady=5, sticky="ew")
+        entries['form'] = ent_form
+        
+        # Lemma
+        ttk.Label(dialog, text="Lemma").grid(row=1, column=0, padx=10, pady=5)
+        ent_lemma = ttk.Entry(dialog)
+        ent_lemma.insert(0, str(current_values[2]) if current_values[2] != 'None' else "")
+        ent_lemma.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
+        entries['lemma'] = ent_lemma
+        
+        # UPOS (Combobox)
+        ttk.Label(dialog, text="UPOS").grid(row=2, column=0, padx=10, pady=5)
+        ent_upos = ttk.Combobox(dialog, values=upos_tags, state="readonly")
+        current_upos = str(current_values[3])
+        if current_upos in upos_tags:
+            ent_upos.set(current_upos)
+        else:
+            ent_upos.set("X")
+        ent_upos.grid(row=2, column=1, padx=10, pady=5, sticky="ew")
+        entries['upos'] = ent_upos
+        
+        # XPOS
+        ttk.Label(dialog, text="XPOS").grid(row=3, column=0, padx=10, pady=5)
+        ent_xpos = ttk.Entry(dialog)
+        ent_xpos.insert(0, str(current_values[4]) if current_values[4] != 'None' else "")
+        ent_xpos.grid(row=3, column=1, padx=10, pady=5, sticky="ew")
+        entries['xpos'] = ent_xpos
             
         def save():
             try:
@@ -222,7 +250,7 @@ class DatabaseEditor:
             except Exception as e:
                 messagebox.showerror("Hata", f"Güncelleme başarısız: {e}")
                 
-        ttk.Button(dialog, text="Kaydet", command=save).grid(row=len(fields), column=1, pady=20)
+        ttk.Button(dialog, text="Kaydet", command=save).grid(row=4, column=1, pady=20)
 
     def add_token(self):
         if not hasattr(self, 'current_sent_id'):

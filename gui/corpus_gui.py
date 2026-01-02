@@ -46,8 +46,8 @@ if sys.platform.startswith('win'):
         except:
             pass  # Continue if it fails
 
-# Add current directory to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add parent directory to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database.schema import CorpusDatabase
 from nlp.turkish_processor import TurkishNLPProcessor
@@ -247,8 +247,19 @@ class CorpusGUI:
         
         if filename:
             try:
+                file_size = os.path.getsize(filename)
+                limit = 1024 * 500 # 500 KB limit
+                
+                content = ""
+                truncated = False
+                
                 with open(filename, 'r', encoding='utf-8') as f:
-                    content = f.read()
+                    if file_size > limit:
+                        truncated = True
+                        content = f.read(limit)
+                        content += f"\n\n... [JSON dosyası çok büyük ({file_size/1024/1024:.2f} MB), önizleme için kırpıldı] ..."
+                    else:
+                        content = f.read()
                 
                 self.file_editor_text.delete(1.0, tk.END)
                 self.file_editor_text.insert(tk.END, content)
@@ -256,7 +267,11 @@ class CorpusGUI:
                 self.current_edit_file_path = filename
                 self.edit_file_var.set(filename)
                 self.edit_file_format = 'json'
-                self.file_editor_status_var.set("JSON dosyası yüklendi")
+                
+                if truncated:
+                    self.file_editor_status_var.set(f"JSON yüklendi (Kısmi: {file_size/1024/1024:.2f} MB)")
+                else:
+                    self.file_editor_status_var.set("JSON dosyası yüklendi")
                 
             except Exception as e:
                 messagebox.showerror("Hata", f"JSON dosyası açılamadı: {str(e)}")
@@ -270,8 +285,19 @@ class CorpusGUI:
         
         if filename:
             try:
+                file_size = os.path.getsize(filename)
+                limit = 1024 * 500 # 500 KB limit
+                
+                content = ""
+                truncated = False
+                
                 with open(filename, 'r', encoding='utf-8') as f:
-                    content = f.read()
+                    if file_size > limit:
+                        truncated = True
+                        content = f.read(limit)
+                        content += f"\n\n... [XML dosyası çok büyük ({file_size/1024/1024:.2f} MB), önizleme için kırpıldı] ..."
+                    else:
+                        content = f.read()
                 
                 self.file_editor_text.delete(1.0, tk.END)
                 self.file_editor_text.insert(tk.END, content)
@@ -279,7 +305,11 @@ class CorpusGUI:
                 self.current_edit_file_path = filename
                 self.edit_file_var.set(filename)
                 self.edit_file_format = 'xml'
-                self.file_editor_status_var.set("XML dosyası yüklendi")
+                
+                if truncated:
+                    self.file_editor_status_var.set(f"XML yüklendi (Kısmi: {file_size/1024/1024:.2f} MB)")
+                else:
+                    self.file_editor_status_var.set("XML dosyası yüklendi")
                 
             except Exception as e:
                 messagebox.showerror("Hata", f"XML dosyası açılamadı: {str(e)}")
@@ -293,8 +323,19 @@ class CorpusGUI:
         
         if filename:
             try:
+                file_size = os.path.getsize(filename)
+                limit = 1024 * 500 # 500 KB limit
+                
+                content = ""
+                truncated = False
+                
                 with open(filename, 'r', encoding='utf-8') as f:
-                    content = f.read()
+                    if file_size > limit:
+                        truncated = True
+                        content = f.read(limit)
+                        content += f"\n\n... [TXT dosyası çok büyük ({file_size/1024/1024:.2f} MB), önizleme için kırpıldı] ..."
+                    else:
+                        content = f.read()
                 
                 self.file_editor_text.delete(1.0, tk.END)
                 self.file_editor_text.insert(tk.END, content)
@@ -302,7 +343,11 @@ class CorpusGUI:
                 self.current_edit_file_path = filename
                 self.edit_file_var.set(filename)
                 self.edit_file_format = 'txt'
-                self.file_editor_status_var.set("TXT dosyası yüklendi")
+                
+                if truncated:
+                    self.file_editor_status_var.set(f"TXT yüklendi (Kısmi: {file_size/1024/1024:.2f} MB)")
+                else:
+                    self.file_editor_status_var.set("TXT dosyası yüklendi")
                 
             except Exception as e:
                 messagebox.showerror("Hata", f"TXT dosyası açılamadı: {str(e)}")
@@ -436,12 +481,18 @@ class CorpusGUI:
                                     values=["custom_bert", "stanza", "spacy", "simple"], state="readonly")
         backend_combo.grid(row=1, column=1, sticky=tk.W, padx=(10, 5), pady=(10, 0))
 
+        # CSV Column Name
+        ttk.Label(parent, text="CSV Metin Kolonu:").grid(row=2, column=0, sticky=tk.W, pady=(10, 0))
+        self.csv_column_var = tk.StringVar(value="text")
+        ttk.Entry(parent, textvariable=self.csv_column_var, width=20).grid(row=2, column=1, sticky=tk.W, padx=(10, 5), pady=(10, 0))
+        ttk.Label(parent, text="(CSV dosyaları için)", font=("Arial", 8, "italic")).grid(row=2, column=2, sticky=tk.W)
+
         # File formats info
-        ttk.Label(parent, text="Desteklenen Formatlar:", font=("Arial", 8, "italic")).grid(row=2, column=0, sticky=tk.W, pady=(5, 0))
-        ttk.Label(parent, text="TXT, JSON, XML dosyaları", font=("Arial", 8)).grid(row=2, column=1, sticky=tk.W, padx=(10, 0), pady=(5, 0))
+        ttk.Label(parent, text="Desteklenen Formatlar:", font=("Arial", 8, "italic")).grid(row=3, column=0, sticky=tk.W, pady=(5, 0))
+        ttk.Label(parent, text="TXT, JSON, XML, CSV dosyaları", font=("Arial", 8)).grid(row=3, column=1, sticky=tk.W, padx=(10, 0), pady=(5, 0))
 
         # Ingest button
-        ttk.Button(parent, text="Corpus'u İçeri Aktar", command=self.ingest_corpus).grid(row=3, column=0, columnspan=3, pady=(10, 0))
+        ttk.Button(parent, text="Corpus'u İçeri Aktar", command=self.ingest_corpus).grid(row=4, column=0, columnspan=3, pady=(10, 0))
         
     def setup_corpus_editor_section(self, parent):
         """Setup corpus editor section"""
@@ -527,14 +578,15 @@ class CorpusGUI:
                   command=self.show_advanced_stats).pack(pady=10)
                   
         # Export Tool
+        # Export Tool
         export_frame = ttk.LabelFrame(parent, text="Dışa Aktarma (Export)", padding="10")
         export_frame.grid(row=1, column=1, sticky=(tk.W, tk.E, tk.N), padx=(10, 0), pady=(0, 20))
         
         ttk.Label(export_frame, text="Verileri akademik formatlarda dışa aktarın.", 
                  wraplength=300).pack(anchor=tk.W, pady=(0, 5))
         
-        ttk.Button(export_frame, text="CoNLL-U Formatında Dışa Aktar", 
-                  command=self.export_conllu).pack(pady=10)
+        ttk.Button(export_frame, text="Veriyi Dışa Aktar", 
+                  command=self.export_corpus_data).pack(pady=10)
 
     def show_advanced_stats(self):
         """Show advanced corpus statistics"""
@@ -580,12 +632,42 @@ class CorpusGUI:
         except Exception as e:
             messagebox.showerror("Hata", f"İstatistikler alınamadı: {e}")
 
-    def export_conllu(self):
-        """Export database to CoNLL-U format"""
+    def export_corpus_data(self):
+        """Export corpus data in various formats"""
         if not self.db_path.get():
             messagebox.showwarning("Uyarı", "Lütfen önce veritabanı dosyasını seçin!")
             return
             
+        # Format selection dialog
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Dışa Aktarma Formatı")
+        dialog.geometry("300x250")
+        
+        ttk.Label(dialog, text="Format Seçin:", font=("Arial", 10, "bold")).pack(pady=10)
+        
+        format_var = tk.StringVar(value="conllu")
+        
+        ttk.Radiobutton(dialog, text="CoNLL-U (Akademik)", variable=format_var, value="conllu").pack(anchor=tk.W, padx=20, pady=2)
+        ttk.Radiobutton(dialog, text="CSV (Excel Uyumlu)", variable=format_var, value="csv").pack(anchor=tk.W, padx=20, pady=2)
+        ttk.Radiobutton(dialog, text="JSON (Yapısal Veri)", variable=format_var, value="json").pack(anchor=tk.W, padx=20, pady=2)
+        ttk.Radiobutton(dialog, text="XML (Web Standardı)", variable=format_var, value="xml").pack(anchor=tk.W, padx=20, pady=2)
+        
+        def proceed():
+            fmt = format_var.get()
+            dialog.destroy()
+            if fmt == "conllu":
+                self._export_corpus_as_conllu()
+            elif fmt == "csv":
+                self._export_corpus_as_csv()
+            elif fmt == "json":
+                self._export_corpus_as_json()
+            elif fmt == "xml":
+                self._export_corpus_as_xml()
+                
+        ttk.Button(dialog, text="Dışa Aktar", command=proceed).pack(pady=20)
+
+    def _export_corpus_as_conllu(self):
+        """Export database to CoNLL-U format"""
         filename = filedialog.asksaveasfilename(
             title="CoNLL-U Olarak Kaydet",
             defaultextension=".conllu",
@@ -603,50 +685,200 @@ class CorpusGUI:
             generator = query.get_all_tokens_for_export()
             
             with open(filename, 'w', encoding='utf-8') as f:
-                # Header info
                 f.write(f"# global.columns = ID FORM LEMMA UPOS XPOS FEATS HEAD DEPREL DEPS MISC\n")
                 
                 sent_count = 0
-                
                 for row, is_new_sent in generator:
                     sent_id, token_num, form, lemma, upos, xpos, morph, head, dep, text, doc = row
                     
                     if is_new_sent:
-                        if sent_count > 0:
-                            f.write("\n") # Empty line between sentences
-                        
+                        if sent_count > 0: f.write("\n")
                         sent_count += 1
-                        # Sentence headers
                         f.write(f"# sent_id = {sent_id}\n")
                         f.write(f"# text = {text}\n")
                         f.write(f"# doc = {doc}\n")
                     
-                    # CoNLL-U Fields (1-based index)
-                    # ID, FORM, LEMMA, UPOS, XPOS, FEATS, HEAD, DEPREL, DEPS, MISC
-                    
-                    # Handle None values
                     form = form if form else "_"
                     lemma = lemma if lemma else "_"
                     upos = upos if upos else "_"
                     xpos = xpos if xpos else "_"
                     morph = morph if morph else "_"
-                    head = str(head) if head is not None else "0" # Root is usually 0
+                    head = str(head) if head is not None else "0"
                     dep = dep if dep else "_"
                     
-                    # Write line
-                    # ID is token_num + 1 (1-based)
                     f.write(f"{token_num + 1}\t{form}\t{lemma}\t{upos}\t{xpos}\t{morph}\t{head}\t{dep}\t_\t_\n")
                 
-                f.write("\n") # Final newline
+                f.write("\n")
                 
             query.close()
             self.status_var.set("CoNLL-U export tamamlandı")
-            messagebox.showinfo("Başarılı", f"CoNLL-U dosyası oluşturuldu:\n{filename}")
+            messagebox.showinfo("Başarılı", f"Dosya oluşturuldu:\n{filename}")
             
         except Exception as e:
             messagebox.showerror("Hata", f"Export hatası: {e}")
             self.status_var.set("Hata oluştu")
+
+    def _export_corpus_as_csv(self):
+        """Export database to CSV format"""
+        filename = filedialog.asksaveasfilename(
+            title="CSV Olarak Kaydet",
+            defaultextension=".csv",
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
+        )
         
+        if not filename:
+            return
+            
+        try:
+            self.status_var.set("CSV export hazırlanıyor...")
+            self.root.update()
+            
+            import csv
+            query = CorpusQuery(self.db_path.get())
+            generator = query.get_all_tokens_for_export()
+            
+            with open(filename, 'w', encoding='utf-8', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(['doc_name', 'sent_id', 'token_id', 'form', 'lemma', 'upos', 'xpos', 'head', 'dep_rel'])
+                
+                for row, _ in generator:
+                    sent_id, token_num, form, lemma, upos, xpos, morph, head, dep, text, doc = row
+                    writer.writerow([doc, sent_id, token_num + 1, form, lemma, upos, xpos, head, dep])
+                
+            query.close()
+            self.status_var.set("CSV export tamamlandı")
+            messagebox.showinfo("Başarılı", f"Dosya oluşturuldu:\n{filename}")
+            
+        except Exception as e:
+            messagebox.showerror("Hata", f"Export hatası: {e}")
+            self.status_var.set("Hata oluştu")
+
+    def _export_corpus_as_json(self):
+        """Export database to JSON Lines (JSONL) format for memory efficiency"""
+        filename = filedialog.asksaveasfilename(
+            title="JSONL Olarak Kaydet",
+            defaultextension=".jsonl",
+            filetypes=[("JSONL files", "*.jsonl"), ("JSON files", "*.json"), ("All files", "*.*")]
+        )
+        
+        if not filename:
+            return
+            
+        try:
+            self.status_var.set("JSONL export hazırlanıyor...")
+            self.root.update()
+            
+            import json
+            query = CorpusQuery(self.db_path.get())
+            generator = query.get_all_tokens_for_export()
+            
+            with open(filename, 'w', encoding='utf-8') as f:
+                current_sentence = None
+                
+                for row, is_new_sent in generator:
+                    sent_id, token_num, form, lemma, upos, xpos, morph, head, dep, text, doc = row
+                    
+                    if is_new_sent:
+                        if current_sentence:
+                            f.write(json.dumps(current_sentence, ensure_ascii=False) + '\n')
+                        
+                        current_sentence = {
+                            'sent_id': sent_id,
+                            'doc_name': doc,
+                            'text': text,
+                            'tokens': []
+                        }
+                    
+                    current_sentence['tokens'].append({
+                        'id': token_num + 1,
+                        'form': form,
+                        'lemma': lemma,
+                        'upos': upos,
+                        'xpos': xpos,
+                        'head': head,
+                        'dep_rel': dep
+                    })
+                
+                # Last sentence
+                if current_sentence:
+                    f.write(json.dumps(current_sentence, ensure_ascii=False) + '\n')
+                
+            query.close()
+            self.status_var.set("JSONL export tamamlandı")
+            messagebox.showinfo("Başarılı", f"Dosya oluşturuldu:\n{filename}")
+            
+        except Exception as e:
+            messagebox.showerror("Hata", f"Export hatası: {e}")
+            self.status_var.set("Hata oluştu")
+
+    def _export_corpus_as_xml(self):
+        """Export database to XML format (streaming)"""
+        filename = filedialog.asksaveasfilename(
+            title="XML Olarak Kaydet",
+            defaultextension=".xml",
+            filetypes=[("XML files", "*.xml"), ("All files", "*.*")]
+        )
+        
+        if not filename:
+            return
+            
+        try:
+            self.status_var.set("XML export hazırlanıyor...")
+            self.root.update()
+            
+            from xml.sax.saxutils import escape
+            query = CorpusQuery(self.db_path.get())
+            generator = query.get_all_tokens_for_export()
+            
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+                f.write('<corpus>\n')
+                
+                current_doc = None
+                current_sent_id = None
+                doc_open = False
+                sent_open = False
+                
+                for row, is_new_sent in generator:
+                    sent_id, token_num, form, lemma, upos, xpos, morph, head, dep, text, doc = row
+                    
+                    # Handle Document changes
+                    if doc != current_doc:
+                        if sent_open:
+                            f.write('    </sentence>\n')
+                            sent_open = False
+                        if doc_open:
+                            f.write('  </document>\n')
+                        
+                        f.write(f'  <document name="{escape(doc)}">\n')
+                        doc_open = True
+                        current_doc = doc
+                    
+                    # Handle Sentence changes
+                    if is_new_sent:
+                        if sent_open:
+                            f.write('    </sentence>\n')
+                        
+                        f.write(f'    <sentence id="{sent_id}">\n')
+                        f.write(f'      <text>{escape(text)}</text>\n')
+                        sent_open = True
+                    
+                    # Write token
+                    f.write(f'      <token id="{token_num+1}" form="{escape(str(form))}" lemma="{escape(str(lemma))}" upos="{escape(str(upos))}" />\n')
+                
+                # Close tags
+                if sent_open: f.write('    </sentence>\n')
+                if doc_open: f.write('  </document>\n')
+                f.write('</corpus>\n')
+                
+            query.close()
+            self.status_var.set("XML export tamamlandı")
+            messagebox.showinfo("Başarılı", f"Dosya oluşturuldu:\n{filename}")
+            
+        except Exception as e:
+            messagebox.showerror("Hata", f"Export hatası: {e}")
+            self.status_var.set("Hata oluştu")
+
     def run_bert_retagging(self):
         """Run BERT re-tagging in background"""
         if not self.db_path.get():
@@ -703,11 +935,6 @@ class CorpusGUI:
         self.status_var.set("BERT güncellemesi tamamlandı")
         messagebox.showinfo("Başarılı", "Veritabanı başarıyla BERT modeli ile güncellendi!")
         
-    def _bert_retagging_error(self, error_msg):
-        """Handle re-tagging error"""
-        self.status_var.set("Güncelleme hatası")
-        messagebox.showerror("Hata", f"Veritabanı güncellenemedi:\n{error_msg}")
-
     def _bert_retagging_error(self, error_msg):
         """Handle re-tagging error"""
         self.status_var.set("Güncelleme hatası")
@@ -822,6 +1049,7 @@ class CorpusGUI:
 
         # Configure grid weights
         parent.columnconfigure(1, weight=1)
+        parent.rowconfigure(3, weight=1)
 
         # Analysis type selection
         ttk.Label(parent, text="Analiz Türü:").grid(row=0, column=0, sticky=tk.W)
@@ -837,11 +1065,25 @@ class CorpusGUI:
         ttk.Label(parent, text="Pencere Boyutu:").grid(row=1, column=0, sticky=tk.W, pady=(10, 0))
         ttk.Spinbox(parent, from_=1, to=20, textvariable=self.window_size, width=10).grid(row=1, column=1, sticky=tk.W, padx=(10, 5), pady=(10, 0))
 
+        # Measure selection (for Collocation)
+        ttk.Label(parent, text="Ölçüt (Collocation):").grid(row=1, column=2, sticky=tk.W, padx=(20, 0), pady=(10, 0))
+        self.measure_var = tk.StringVar(value="pmi")
+        ttk.Combobox(parent, textvariable=self.measure_var, values=["pmi", "log_likelihood", "t_score"], state="readonly", width=15).grid(row=1, column=3, sticky=tk.W, padx=(10, 5), pady=(10, 0))
+
         # Analysis button
-        ttk.Button(parent, text="Analiz Yap", command=self.run_analysis).grid(row=1, column=2, columnspan=2, pady=(10, 0))
+        ttk.Button(parent, text="Analiz Yap", command=self.run_analysis).grid(row=2, column=2, columnspan=2, pady=(10, 0))
 
         # Stats button
-        ttk.Button(parent, text="İstatistikler", command=self.show_stats).grid(row=2, column=0, columnspan=4, pady=(10, 0))
+        ttk.Button(parent, text="İstatistikler", command=self.show_stats).grid(row=2, column=0, columnspan=2, pady=(10, 0))
+
+        # Results area directly on the Analysis tab
+        results_frame = ttk.LabelFrame(parent, text="Analiz Sonuçları", padding="10")
+        results_frame.grid(row=3, column=0, columnspan=4, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(10, 0))
+        results_frame.columnconfigure(0, weight=1)
+        results_frame.rowconfigure(0, weight=1)
+
+        self.analysis_results_text = scrolledtext.ScrolledText(results_frame, height=15, wrap=tk.WORD, font=("Consolas", 10))
+        self.analysis_results_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
     def _run_cql_analysis(self, query):
         """Run CQL analysis"""
@@ -959,9 +1201,9 @@ class CorpusGUI:
             
     def browse_corpus_dir(self):
         """Browse for corpus directory"""
-        directory = filedialog.askdirectory(title="Metin Klasörü Seç")
-        if directory:
-            self.corpus_dir.set(directory)
+        dirname = filedialog.askdirectory(title="Corpus Klasörü Seç")
+        if dirname:
+            self.corpus_dir.set(dirname)
             
     def create_database(self):
         """Create new database"""
@@ -991,6 +1233,22 @@ class CorpusGUI:
             messagebox.showwarning("Uyarı", "Lütfen veritabanı dosyasını belirtin!")
             return
             
+        # Check if DB is already populated
+        try:
+            temp_ingestor = CorpusIngestor(self.db_path.get())
+            is_populated = temp_ingestor.is_populated()
+            temp_ingestor.close()
+            
+            if is_populated:
+                result = messagebox.askyesno("Veritabanı Dolu", 
+                                           "Veritabanında zaten veri var.\n\n"
+                                           "Yeni dosyaları mevcut verilerin üzerine eklemek istiyor musunuz?\n"
+                                           "(Hayır derseniz işlem iptal edilir)")
+                if not result:
+                    return
+        except Exception as e:
+            print(f"DB check warning: {e}")
+            
         # Start ingestion in background
         thread = threading.Thread(target=self._ingest_corpus_thread)
         thread.daemon = True
@@ -1003,7 +1261,10 @@ class CorpusGUI:
             self.root.update()
             
             ingestor = CorpusIngestor(self.db_path.get(), nlp_backend=self.backend_var.get())
-            stats = ingestor.ingest_directory(self.corpus_dir.get())
+            
+            # Pass CSV column
+            csv_col = self.csv_column_var.get()
+            stats = ingestor.ingest_directory(self.corpus_dir.get(), text_column=csv_col)
             ingestor.close()
             
             # Update UI in main thread
@@ -1081,7 +1342,7 @@ class CorpusGUI:
         )
         
         self.display_results("Frekans Analizi", results, "frequency")
-        
+
     def _run_collocation_analysis(self, query):
         """Run collocation analysis"""
         if not self.search_term.get():
@@ -1093,7 +1354,7 @@ class CorpusGUI:
         results = query.collocation_analysis(
             target_word=self.search_term.get(),
             window_size=self.window_size.get(),
-            measure='pmi',
+            measure=self.measure_var.get(),
             limit=50
         )
         
@@ -1128,37 +1389,33 @@ class CorpusGUI:
         
         try:
             from pathlib import Path
-            import os
-            
             source_path = Path(self.source_path_var.get())
-            all_text = ""
             
-            if source_path.is_dir():
-                # Process all text files in directory
-                for file_path in source_path.glob("*.txt"):
-                    try:
-                        with open(file_path, 'r', encoding='utf-8') as f:
-                            all_text += f.read() + "\n"
-                    except Exception as e:
-                        print(f"Dosya okunamadı {file_path}: {e}")
-            else:
-                # Single file
-                with open(source_path, 'r', encoding='utf-8') as f:
-                    all_text = f.read()
-            
-            if not all_text.strip():
-                messagebox.showwarning("Uyarı", "Dosyalarda metin bulunamadı!")
-                return
+            # Helper to yield lines from one or multiple files
+            def line_generator():
+                files = []
+                if source_path.is_dir():
+                    files = list(source_path.glob("*.txt"))
+                else:
+                    files = [source_path]
                 
+                for file_path in files:
+                    try:
+                        with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+                            for line in f:
+                                yield line
+                    except Exception as e:
+                        print(f"Error reading {file_path}: {e}")
+
             # Simple analysis based on type
             analysis_type = self.analysis_type.get()
             
             if analysis_type == "kwic":
-                self._run_simple_kwic_analysis(all_text)
+                self._run_simple_kwic_analysis(line_generator())
             elif analysis_type == "frequency":
-                self._run_simple_frequency_analysis(all_text)
+                self._run_simple_frequency_analysis(line_generator())
             elif analysis_type == "collocation":
-                self._run_simple_collocation_analysis(all_text)
+                self._run_simple_collocation_analysis(line_generator())
             else:
                 messagebox.showwarning("Uyarı", "Bu analiz türü dosya tabanlı kaynaklar için desteklenmiyor!")
                 
@@ -1183,13 +1440,13 @@ class CorpusGUI:
         
         query.close()
         
-    def _run_simple_kwic_analysis(self, text):
-        """Simple KWIC analysis from text"""
+    def _run_simple_kwic_analysis(self, line_iterator):
+        """Simple KWIC analysis from text generator"""
         search_term = self.search_term.get().lower()
-        lines = text.split('\n')
         results = []
+        limit = 100
         
-        for line in lines:
+        for line in line_iterator:
             line_lower = line.lower()
             if search_term in line_lower:
                 # Find position
@@ -1203,17 +1460,25 @@ class CorpusGUI:
                     'keyword': keyword,
                     'right_context': right_context[:50]  # First 50 chars
                 })
+                
+                if len(results) >= limit:
+                    break
         
         self.display_results("Dosya KWIC Analizi", results, "kwic")
         
-    def _run_simple_frequency_analysis(self, text):
-        """Simple frequency analysis from text"""
+    def _run_simple_frequency_analysis(self, line_iterator):
+        """Simple frequency analysis from text generator"""
         import re
         from collections import Counter
         
-        # Simple word tokenization
-        words = re.findall(r'\b\w+\b', text.lower())
-        word_counts = Counter(words)
+        word_counts = Counter()
+        limit = 100000 # Process up to 100k lines to be safe(r) or keep reading
+        
+        for i, line in enumerate(line_iterator):
+            words = re.findall(r'\b\w+\b', line.lower())
+            word_counts.update(words)
+            if i > limit: 
+                break
         
         results = []
         for word, count in word_counts.most_common(100):
@@ -1224,32 +1489,35 @@ class CorpusGUI:
             
         self.display_results("Dosya Frekans Analizi", results, "frequency")
         
-    def _run_simple_collocation_analysis(self, text):
-        """Simple collocation analysis from text"""
+    def _run_simple_collocation_analysis(self, line_iterator):
+        """Simple collocation analysis from text generator"""
         import re
         from collections import Counter
         
         search_term = self.search_term.get().lower()
         window_size = self.window_size.get()
+        collocation_counts = Counter()
         
-        words = re.findall(r'\b\w+\b', text.lower())
-        collocations = []
+        limit = 50000 # Limit processing
         
-        for i, word in enumerate(words):
-            if word == search_term:
-                # Get window around the word
-                start = max(0, i - window_size)
-                end = min(len(words), i + window_size + 1)
-                window_words = words[start:end]
-                
-                # Find collocations (words near the target)
-                for j, w in enumerate(window_words):
-                    if w != search_term and abs((start + j) - i) <= window_size:
-                        collocations.append(w)
+        for i, line in enumerate(line_iterator):
+            words = re.findall(r'\b\w+\b', line.lower())
+            
+            for idx, word in enumerate(words):
+                if word == search_term:
+                    # Get window around the word
+                    start = max(0, idx - window_size)
+                    end = min(len(words), idx + window_size + 1)
+                    window_words = words[start:end]
+                    
+                    # Find collocations
+                    for j, w in enumerate(window_words):
+                        if w != search_term and abs((start + j) - idx) <= window_size:
+                            collocation_counts[w] += 1
+            if i > limit:
+                break
         
-        collocation_counts = Counter(collocations)
         results = []
-        
         for word, count in collocation_counts.most_common(50):
             results.append({
                 'collocate': word,
@@ -1263,7 +1531,9 @@ class CorpusGUI:
         """Display analysis results"""
         from datetime import datetime
         
-        self.results_text.delete(1.0, tk.END)
+        # Prefer the results text area on the Analysis tab if it exists
+        target_text = getattr(self, 'analysis_results_text', self.results_text)
+        target_text.delete(1.0, tk.END)
         
         # Store current analysis data for export
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1275,71 +1545,75 @@ class CorpusGUI:
         }
         
         # Title
-        self.results_text.insert(tk.END, f"=== {title} ===\n")
-        self.results_text.insert(tk.END, f"Analiz Zamanı: {timestamp}\n\n")
+        target_text.insert(tk.END, f"=== {title} ===\n")
+        target_text.insert(tk.END, f"Analiz Zamanı: {timestamp}\n\n")
         
         if analysis_type == "kwic":
-            self._display_kwic_results(data)
+            self._display_kwic_results(data, target_text)
         elif analysis_type == "frequency":
-            self._display_frequency_results(data)
+            self._display_frequency_results(data, target_text)
         elif analysis_type == "collocation":
-            self._display_collocation_results(data)
+            self._display_collocation_results(data, target_text)
         elif analysis_type == "word_sketch":
-            self._display_word_sketch_results(data)
+            self._display_word_sketch_results(data, target_text)
             
         self.status_var.set(f"{title} tamamlandı")
         
-    def _display_kwic_results(self, results):
+    def _display_kwic_results(self, results, target_text=None):
         """Display KWIC results"""
+        if target_text is None: target_text = self.results_text
         if not results:
-            self.results_text.insert(tk.END, "Sonuç bulunamadı.\n")
+            target_text.insert(tk.END, "Sonuç bulunamadı.\n")
             return
             
         for i, result in enumerate(results[:20], 1):  # Limit to 20 results
             line = f"{i:2d}. {result['left_context']} [[[{result['keyword']}]] {result['right_context']}\n"
-            self.results_text.insert(tk.END, line)
+            target_text.insert(tk.END, line)
             
         if len(results) > 20:
-            self.results_text.insert(tk.END, f"\n... ve {len(results) - 20} sonuç daha\n")
+            target_text.insert(tk.END, f"\n... ve {len(results) - 20} sonuç daha\n")
             
-    def _display_frequency_results(self, results):
+    def _display_frequency_results(self, results, target_text=None):
         """Display frequency results"""
+        if target_text is None: target_text = self.results_text
         if not results:
-            self.results_text.insert(tk.END, "Sonuç bulunamadı.\n")
+            target_text.insert(tk.END, "Sonuç bulunamadı.\n")
             return
             
-        self.results_text.insert(tk.END, "Kelime              Frekans\n")
-        self.results_text.insert(tk.END, "-" * 35 + "\n")
+        target_text.insert(tk.END, "Kelime              Frekans\n")
+        target_text.insert(tk.END, "-" * 35 + "\n")
         
         for item in results[:50]:  # Limit to 50 results
             line = f"{item['word']:<20} {item['frequency']:>8}\n"
-            self.results_text.insert(tk.END, line)
+            target_text.insert(tk.END, line)
             
-    def _display_collocation_results(self, results):
+    def _display_collocation_results(self, results, target_text=None):
         """Display collocation results"""
+        if target_text is None: target_text = self.results_text
         if not results:
-            self.results_text.insert(tk.END, "Sonuç bulunamadı.\n")
+            target_text.insert(tk.END, "Sonuç bulunamadı.\n")
             return
             
-        self.results_text.insert(tk.END, "Collocate           Co-occ   PMI Score\n")
-        self.results_text.insert(tk.END, "-" * 45 + "\n")
+        target_text.insert(tk.END, "Collocate           Co-occ   Score\n")
+        target_text.insert(tk.END, "-" * 45 + "\n")
         
         for item in results[:30]:  # Limit to 30 results
             line = f"{item['collocate']:<20} {item['co_occurrence_count']:>7} {item['score']:>8.3f}\n"
-            self.results_text.insert(tk.END, line)
+            target_text.insert(tk.END, line)
             
-    def _display_word_sketch_results(self, results):
+    def _display_word_sketch_results(self, results, target_text=None):
         """Display word sketch results"""
+        if target_text is None: target_text = self.results_text
         if not results:
-            self.results_text.insert(tk.END, "Sonuç bulunamadı.\n")
+            target_text.insert(tk.END, "Sonuç bulunamadı.\n")
             return
             
         for relation, words in results.items():
             if words:
-                self.results_text.insert(tk.END, f"\n=== {relation.upper()} ===\n")
+                target_text.insert(tk.END, f"\n=== {relation.upper()} ===\n")
                 for word_info in words[:10]:  # Limit to 10 per relation
                     line = f"  {word_info['related_word']} ({word_info['frequency']} kez)\n"
-                    self.results_text.insert(tk.END, line)
+                    target_text.insert(tk.END, line)
                     
     def show_stats(self):
         """Show database statistics"""
@@ -1849,13 +2123,25 @@ class CorpusGUI:
         """Load a corpus file for editing"""
         filename = filedialog.askopenfilename(
             title="Corpus Dosyası Aç",
-            filetypes=[("Text files", "*.txt"), ("JSON files", "*.json"), ("XML files", "*.xml"), ("All files", "*.*")]
+            filetypes=[("Text files", "*.txt"), ("JSON files", "*.json"), ("XML files", "*.xml"), ("CSV files", "*.csv"), ("All files", "*.*")]
         )
 
         if filename:
             try:
+                # Get file size
+                file_size = os.path.getsize(filename)
+                limit = 1024 * 500 # 500 KB limit for preview
+                
+                content = ""
+                truncated = False
+                
                 with open(filename, 'r', encoding='utf-8') as f:
-                    content = f.read()
+                    if file_size > limit:
+                        truncated = True
+                        content = f.read(limit)
+                        content += f"\n\n... [Dosya çok büyük ({file_size/1024/1024:.2f} MB), önizleme için kırpıldı] ..."
+                    else:
+                        content = f.read()
 
                 self.editor_text.delete(1.0, tk.END)
                 self.editor_text.insert(tk.END, content)
@@ -1863,7 +2149,12 @@ class CorpusGUI:
                 self.current_file_path = filename
                 self.current_file_var.set(filename)
                 self.original_content = content
-                self.editor_status_var.set("Dosya başarıyla yüklendi")
+                
+                if truncated:
+                    self.editor_status_var.set(f"Büyük dosya, kısmi yüklendi ({file_size/1024/1024:.2f} MB)")
+                    messagebox.showinfo("Bilgi", "Dosya çok büyük olduğu için sadece ilk 500KB yüklendi.")
+                else:
+                    self.editor_status_var.set("Dosya başarıyla yüklendi")
 
             except Exception as e:
                 messagebox.showerror("Hata", f"Dosya yüklenemedi: {str(e)}")

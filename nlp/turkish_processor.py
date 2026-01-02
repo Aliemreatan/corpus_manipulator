@@ -218,35 +218,6 @@ class TurkishNLPProcessor:
         
         return tokens
     
-    def _process_simple(self, text: str) -> List[Dict[str, Any]]:
-        """Process text using simple tokenization"""
-        # Simple Turkish text normalization
-        text = self._normalize_turkish_text(text)
-        
-        # Basic tokenization using regex - NOW INCLUDES TURKISH CHARACTERS
-        # Turkish characters: ç, ğ, ı, İ, ö, ş, ü, Ç, Ğ, İ, Ö, Ş, Ü
-        tokens = re.findall(r'\b[\wçğıöşüÇĞIİÖŞÜ]+\b', text)
-        
-        token_data_list = []
-        for i, token in enumerate(tokens):
-            token_data = {
-                'word': token,
-                'norm': token.lower(),
-                'upos': None,  # No POS tagging
-                'upos_tr': None,  # No Turkish POS tagging
-                'xpos': None,
-                'morph': None,  # No morphology
-                'dep_head': None,  # No dependency parsing
-                'dep_rel': None,
-                'start_char': i * (len(token) + 1),  # Rough estimation
-                'end_char': (i + 1) * (len(token) + 1),
-                'is_punctuation': False,
-                'is_space': False
-            }
-            token_data_list.append(token_data)
-        
-        return token_data_list
-    
     def _process_with_custom_bert(self, text: str) -> List[Dict[str, Any]]:
         """Process text using custom BERT model"""
         if self.custom_bert_processor is None:
@@ -260,73 +231,53 @@ class TurkishNLPProcessor:
         except Exception as e:
             logger.error(f"Custom BERT processing error: {e}")
             return self._process_simple(text)
-    
-    def _normalize_turkish_text(self, text: str) -> str:
-        """Basic Turkish text normalization - PRESERVE Turkish characters"""
-        # Remove extra whitespace
-        text = re.sub(r'\s+', ' ', text.strip())
-        
-        # NOTE: Turkish characters are PRESERVED, not converted to ASCII
-        # This ensures proper handling of Turkish text including ş, ç, ğ, ı, ö, ü, İ, Ç, Ğ, Ö, Ş, Ü
-        
-        # Only perform basic cleanup while preserving Turkish characters
-        # Remove control characters but keep Turkish special characters
-        text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', text)
-        
-        return text
-    
-    def _format_stanza_morph(self, feats: str) -> str:
-        """Format Stanza morphological features"""
-        if not feats:
-            return None
-        
-        # Stanza features are already in "Key=Value|Key=Value" format
-        return feats
 
-    def _format_morph_features(self, morph) -> str:
-        """Format spaCy morphological features"""
-        if not morph:
-            return None
+    def _process_simple(self, text: str) -> List[Dict[str, Any]]:
+        """Process text using simple tokenization with basic heuristic POS tagging"""
+        # Simple Turkish text normalization
+        text = self._normalize_turkish_text(text)
         
-        features = []
-        for key, value in morph:
-            features.append(f"{key}={value}")
+        # Basic tokenization using regex - NOW INCLUDES TURKISH CHARACTERS
+        # Turkish characters: ç, ğ, ı, İ, ö, ş, ü, Ç, Ğ, İ, Ö, Ş, Ü
+        tokens = re.findall(r'\b[\wçğıöşüÇĞIİÖŞÜ]+\b', text)
         
-        return "|".join(features) if features else None
-    
-    def _map_pos_to_turkish(self, upos: str) -> str:
-        """
-        Map Universal POS tags to Turkish POS tag names
-        
-        Args:
-            upos: Universal POS tag (NOUN, VERB, ADJ, etc.)
+        token_data_list = []
+        for i, token in enumerate(tokens):
+            # Basic POS heuristic
+            pos = 'NOUN' # Default
+            token_lower = token.lower()
             
-        Returns:
-            Turkish POS tag name
-        """
-        pos_mapping = {
-            'NOUN': 'İsim',
-            'VERB': 'Fiil',
-            'ADJ': 'Sıfat',
-            'ADV': 'Zarf',
-            'PRON': 'Zamirler',
-            'DET': 'Belirteç',
-            'ADP': 'Edat',
-            'CONJ': 'Bağlaç',
-            'CCONJ': 'Bağlaç',
-            'SCONJ': 'Bağlaç',
-            'PART': 'Ek',
-            'INTJ': 'Ünlem',
-            'NUM': 'Sayı',
-            'PROPN': 'Özel İsim',
-            'AUX': 'Yardımcı Fiil',
-            'PUNCT': 'Noktalama',
-            'SYM': 'Sembol',
-            'X': 'Bilinmeyen'
-        }
+            if token_lower in ['ve', 'veya', 'ile', 'ama', 'fakat', 'ancak', 'çünkü']:
+                pos = 'CCONJ'
+            elif token_lower in ['bu', 'şu', 'o', 'bunlar', 'şunlar', 'onlar', 'ben', 'sen', 'biz', 'siz']:
+                pos = 'PRON'
+            elif token_lower in ['bir', 'iki', 'üç', 'dört', 'beş', 'altı', 'yedi', 'sekiz', 'dokuz', 'on', 'yüz', 'bin']:
+                pos = 'NUM'
+            elif token_lower in ['var', 'yok', 'değil', 'evet', 'hayır']:
+                pos = 'VERB' # Treat existentials as verbs for simplicity
+            elif any(token_lower.endswith(suffix) for suffix in ['mek', 'mak', 'di', 'dı', 'du', 'dü', 'ti', 'tı', 'tu', 'tü', 'miş', 'mış', 'muş', 'müş', 'ecek', 'acak', 'iyor', 'ıyor', 'uyor', 'üyor']):
+                pos = 'VERB'
+            elif any(token_lower.endswith(suffix) for suffix in ['ler', 'lar', 'in', 'ın', 'un', 'ün', 'de', 'da', 'te', 'ta', 'den', 'dan', 'ten', 'tan']):
+                pos = 'NOUN'
+                
+            token_data = {
+                'word': token,
+                'norm': token_lower,
+                'upos': pos,  # Heuristic POS
+                'upos_tr': self._map_pos_to_turkish(pos),
+                'xpos': None,
+                'morph': None,
+                'dep_head': None,
+                'dep_rel': None,
+                'start_char': i * (len(token) + 1),  # Rough estimation
+                'end_char': (i + 1) * (len(token) + 1),
+                'is_punctuation': False,
+                'is_space': False
+            }
+            token_data_list.append(token_data)
         
-        return pos_mapping.get(upos, upos)
-    
+        return token_data_list
+        
     def split_sentences(self, text: str) -> List[str]:
         """Split text into sentences"""
         if self.backend == 'spacy':
@@ -336,9 +287,35 @@ class TurkishNLPProcessor:
             doc = self.nlp(text)
             return [sent.text.strip() for sent in doc.sentences if sent.text.strip()]
         else:
-            # Simple sentence splitting
-            sentences = re.split(r'[.!?]+', text)
-            return [sent.strip() for sent in sentences if sent.strip()]
+            # Enhanced sentence splitting for Turkish
+            # Handles ellipsis (...), !, ?, . followed by whitespace or end of string
+            # Also avoids splitting on common abbreviations like Dr., Prof., vb. (basic check)
+            
+            # Protect common abbreviations temporarily
+            protected_text = text
+            abbreviations = ['Dr.', 'Prof.', 'Av.', 'vb.', 'bkz.', 's.', 'yy.', 'M.Ö.', 'M.S.']
+            placeholders = [f'{{ABBR{i}}}' for i in range(len(abbreviations))]
+            
+            for abbr, ph in zip(abbreviations, placeholders):
+                protected_text = protected_text.replace(abbr, ph)
+            
+            # Split by punctuation followed by whitespace or EOS
+            # (?<=[.!?]) lookbehind for punctuation
+            # (?:\s+|$) match whitespace or end of string
+            sentences = re.split(r'(?<=[.!?])(?:\s+|$)', protected_text)
+            
+            # Restore abbreviations
+            restored_sentences = []
+            for sent in sentences:
+                if not sent.strip():
+                    continue
+                
+                restored = sent
+                for abbr, ph in zip(abbreviations, placeholders):
+                    restored = restored.replace(ph, abbr)
+                restored_sentences.append(restored.strip())
+                
+            return restored_sentences
     
     def get_processing_info(self) -> Dict[str, Any]:
         """Get information about the current processing setup"""

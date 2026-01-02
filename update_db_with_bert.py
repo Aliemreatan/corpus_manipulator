@@ -19,6 +19,7 @@ from tqdm import tqdm
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from nlp.custom_bert_processor import create_custom_bert_processor
+from database.schema import CorpusDatabase
 
 # Logging setup
 logging.basicConfig(
@@ -37,6 +38,12 @@ class DatabaseUpdater:
         """Veritabanına bağlan"""
         if not os.path.exists(self.db_path):
             raise FileNotFoundError(f"Veritabanı bulunamadı: {self.db_path}")
+            
+        # Ensure schema is up to date (fixes triggers)
+        db = CorpusDatabase(self.db_path)
+        db.connect()
+        db.create_schema()
+        db.close()
             
         self.conn = sqlite3.connect(self.db_path)
         self.conn.row_factory = sqlite3.Row

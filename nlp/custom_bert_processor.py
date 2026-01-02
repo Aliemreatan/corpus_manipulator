@@ -251,12 +251,14 @@ class CustomBERTProcessor:
         """Hugging Face BERT modeli ile metin işleme - FIXED"""
         try:
             # Tokenize the text first to get proper alignment
-            inputs = self.tokenizer(text, return_tensors="pt", add_special_tokens=True)
+            # Use return_offsets_mapping=True to get character positions
+            inputs = self.tokenizer(text, return_tensors="pt", add_special_tokens=True, return_offsets_mapping=True)
+            offset_mapping = inputs['offset_mapping'][0].tolist()
             all_tokens = self.tokenizer.convert_ids_to_tokens(inputs['input_ids'][0])
 
             # Get model predictions
             with torch.no_grad():
-                outputs = self.model(**inputs)
+                outputs = self.model(inputs['input_ids'], attention_mask=inputs['attention_mask'])
                 
                 # Get probabilities and predictions
                 probabilities = torch.softmax(outputs.logits, dim=2)
@@ -269,31 +271,32 @@ class CustomBERTProcessor:
             all_predicted_labels = [self.model.config.id2label[pred.item()] for pred in predictions[0]]
             all_confidences = confidences[0].tolist()
 
-            # Remove special tokens ([CLS], [SEP], [PAD])
-            tokens = []
-            predicted_labels = []
-            token_confidences = []
-
-            for token, label, conf in zip(all_tokens, all_predicted_labels, all_confidences):
-                if token not in ['[CLS]', '[SEP]', '[PAD]']:
-                    tokens.append(token)
-                    predicted_labels.append(label)
-                    token_confidences.append(conf)
-
             # Now aggregate subtokens properly
             aggregated_tokens = []
             current_word = ""
             current_label = None
             current_score = 0.0
             subtoken_count = 0
+            
+            # Track start/end for the aggregated word
+            word_start = -1
+            word_end = -1
 
-            for token, label, conf in zip(tokens, predicted_labels, token_confidences):
+            for idx, (token, label, conf) in enumerate(zip(all_tokens, all_predicted_labels, all_confidences)):
+                # Skip special tokens but use them to maintain index alignment if needed
+                if token in ['[CLS]', '[SEP]', '[PAD]']:
+                    continue
+                
+                # Get offsets for this token
+                start, end = offset_mapping[idx]
+                
+                # Handle subwords
                 if token.startswith("##"):
                     # This is a continuation of the previous word
                     current_word += token[2:]  # Remove ## prefix
-                    # Use the label with highest confidence (keep first label for simplicity)
                     current_score += conf
                     subtoken_count += 1
+                    word_end = end # Update end position
                 else:
                     # Save previous word if exists
                     if current_word:
@@ -310,8 +313,8 @@ class CustomBERTProcessor:
                             'morph': morph,
                             'dep_head': None,
                             'dep_rel': None,
-                            'start_char': len(aggregated_tokens) * (len(current_word) + 1),  # Approximate
-                            'end_char': (len(aggregated_tokens) + 1) * (len(current_word) + 1),
+                            'start_char': word_start,
+                            'end_char': word_end,
                             'is_punctuation': current_word in '.,;:!?"()[]{}',
                             'is_space': False,
                             'bert_confidence': current_score / max(subtoken_count, 1)
@@ -323,6 +326,8 @@ class CustomBERTProcessor:
                     current_label = label
                     current_score = conf
                     subtoken_count = 1
+                    word_start = start
+                    word_end = end
 
             # Don't forget the last word
             if current_word:
@@ -339,8 +344,8 @@ class CustomBERTProcessor:
                     'morph': morph,
                     'dep_head': None,
                     'dep_rel': None,
-                    'start_char': len(aggregated_tokens) * (len(current_word) + 1),
-                    'end_char': (len(aggregated_tokens) + 1) * (len(current_word) + 1),
+                    'start_char': word_start,
+                    'end_char': word_end,
                     'is_punctuation': current_word in '.,;:!?"()[]{}',
                     'is_space': False,
                     'bert_confidence': current_score / max(subtoken_count, 1)
